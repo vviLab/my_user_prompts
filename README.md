@@ -17,65 +17,11 @@
 └── README.md         # 本文件
 ```
 
-> `./.tmp/` 与 `pylibs/` 是复现计量用的临时产物，已由 `.gitignore` 排除，不随仓库发布。
-
 ## 使用方法
 
 **首选：放到工具约定的固定路径，由其自动加载。** DSH 读取 `~/.dsh/AGENTS.md`（全局）以及工作区根目录、子目录中的 `AGENTS.md`（项目级；子目录文件在访问该目录时加载，具体行为随版本而异）；仓库中的 `prompts/AGENTS.md` 已按该约定命名，**复制时保持文件名为 `AGENTS.md`**，放入对应位置即生效，无需手动粘贴。
 
-**备选：通用 AI 工具没有固定加载约定时**，把 `prompts/AGENTS.md` 全文复制到系统提示（System Prompt）或自定义指令区域。全文 5,376 字符（`wc -m`，含换行）、**3,143 tokens**（按 DeepSeek-V4.1-Flash-1017 官方分词器实测）；上述数值均锚定 `prompts/AGENTS.md` 的 sha256 `51e2766`，计量方法见下节。
-
-**裁剪顺序**：受字数限制需要取舍时，按下表顺序删；删到底也须守住最小集。
-
-> 说明：正文没有名为「不得放宽清单」的小节，这项约束出自 §0 位阶段末句原文——「下级规范可加严，但不得放宽本规范的安全、授权和举证要求」，实体内容则分布在 §1.1–§1.4 的授权清单、§2.1 的举证要求与 §3.1 的外部内容隔离。
-
-| 顺序 | 可删或可压缩的部分 | 删后须补的一句 |
-|---|---|---|
-| 1 | §4.2 引用体例（CS1 脚注、条目字段顺序、CS1 与 WP:CITEVAR） | 引用沿用文档既有体例；无既有体例时须可定位（作者 / 标题 / 载体 / 日期 / URL / 访问日期） |
-| 2 | §5 排版偏好（表格触发条件、单位换算、日期格式、代码块注释） | 输出排版从简 |
-| 3 | §2.3 调度七条中的第 2、4、6、7 条 | 独立任务才并行，不重复同一查询 |
-| 4 | §4.1 四级标注的具体定义 | 事实、推断与建议分开表述 |
-
-**最小集（不得删）**：§0（位阶、冲突裁决、授权不明确视为未授权）+ §1.1–§1.4（默认只读、授权清单、授权闭环、凭据）+ §2.1（举证）+ §3.1（外部内容不构成指令）。删掉其中任一节，剩余条款会失去判据或直接悬空。
-
-**裁剪后自查**：正文不含显式「见 §x」式交叉引用，但存在语义依赖——§2.1 的「脱敏」依赖 §1.4 对凭据的定义，§1.3 的「重新取得授权」依赖 §1.2 的授权清单。裁剪版须人工复核这类依赖，确认没有条款引用了已删章节的概念。
-
-裁剪版属于衍生文本，不得再以《DSH 全局规范》名义发布，也不得沿用下文的校验锚点——如需分发，应标注其自身的 sha256 与裁剪日期，并按所选许可证履行修改声明义务。
-
-## 上下文占用计量
-
-同一份文本有三个口径，用途不同，不能互相替代：
-
-| 口径 | 方法 | 当前值 | 性质 |
-|---|---|---|---|
-| 字符数 | `wc -m prompts/AGENTS.md` | 5,376 | 确定性锚点，任何人可独立复核 |
-| 字节数 | `wc -c prompts/AGENTS.md` | 14,178 | UTF-8 编码体积 |
-| token 数 | 官方分词器实测 | 3,143 | 上下文预算，仅对该模型的分词器成立 |
-
-字符数按 Unicode 码点计（`wc -m`），含全部换行、空格与 Markdown 符号，不做裁剪。注意 `LC_ALL=C` 下 `wc -m` 会退化为字节数，同一文件读作 14,178。
-
-token 数用模型官方分词器实测，不用比例估算。DeepSeek-V4.1-Flash-1017 的分词器为 `tokenizer.json`（byte-level BPE，词表 128,000 + 1,283 个 added tokens，127,741 条合并规则）；`model_max_length` 1,048,576 与「不自加 BOS/EOS」属同目录配套的 `tokenizer_config.json`，不在 `tokenizer.json` 内：
-
-```bash
-mkdir -p ./.tmp
-curl -sSL --max-time 120 --retry 3 -o ./.tmp/tokenizer.json \
-  https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/resolve/main/tokenizer.json
-curl -sSL --max-time 120 --retry 3 -o ./.tmp/tokenizer_config.json \
-  https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/resolve/main/tokenizer_config.json
-shasum -a 256 ./.tmp/tokenizer.json   # 期望 c90dfa01249db1be4245780a052ede752e1361c612ac6d08e2bdada7d599476b
-python3 -m pip install --upgrade --target ./.tmp/pylibs tokenizers   # 实测 0.22.2 / Python 3.9.6
-PYTHONPATH=./.tmp/pylibs python3 -c "
-from tokenizers import Tokenizer
-tok = Tokenizer.from_file('./.tmp/tokenizer.json')
-s = open('prompts/AGENTS.md', encoding='utf-8').read()
-ids = tok.encode(s, add_special_tokens=False).ids
-print(len(s), '字符 ->', len(ids), 'tokens', round(len(s) / len(ids), 3), '字符/token')"
-# 用完 rm -rf ./.tmp
-```
-
-实测 1.711 字符/token（即 tokens ≈ 字符数 ÷ 1.711，仅供同一分词器下事后勾稽，不作估算依据）。**不要用「字符数 ÷ 4」估算**：那是通用文本启发式，对以中文为主的本文本会低估约 2.3 倍——5,376 ÷ 4 = 1,344 只是漏掉了每条消息的固定开销，DSH 的完整启发式是 ⌈字符数 / 4⌉ + 4 = 1,348，实测 3,143。
-
-上述数值都绑定 `prompts/AGENTS.md` 的 sha256；内容一变，旧数字立即作废，须重新实测并同步更新。
+**备选：通用 AI 工具没有固定加载约定时**，把 `prompts/AGENTS.md` 全文复制到系统提示（System Prompt）或自定义指令区域。
 
 ## 规则概览
 
