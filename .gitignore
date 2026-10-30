@@ -1,2 +1,6 @@
 # 本地项目指令，不随仓库发布
 /AGENTS.md
+# 计量复现的临时产物
+/tokenizer.json
+/pylibs/
+/.tmp/
