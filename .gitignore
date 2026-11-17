@@ -4,3 +4,9 @@
 /tokenizer.json
 /pylibs/
 /.tmp/
+# 系统与编辑器临时文件（不带前导斜杠，全仓任意层级生效）
+.DS_Store
+._*
+*.swp
+*.swo
+*~
